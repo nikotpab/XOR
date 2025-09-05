@@ -1,8 +1,16 @@
 #include <stdio.h>
-#include <string.h>
+
+int str_length(const char *s) {
+    int len = 0;
+    while (s[len] != '\0') {
+        len++;
+    }
+    return len;
+}
 
 void encrypt(void);
 void decrypt(void);
+void print(char);
 
 const char *ascii[128] = {
     "00000000", "00000001", "00000010", "00000011", "00000100", "00000101", "00000110", "00000111",
@@ -28,7 +36,7 @@ const char *ascci_ch[128] = {
     "BS","TAB","LF","VT","FF","CR","SO","SI",
     "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB",
     "CAN","EM","SUB","ESC","FS","GS","RS","US",
-    "SPACE","!","\"","#","$","%","&","'","(",")",
+    " ","!","\"","#","$","%","&","'","(",")",
     "*","+",",","-",".","/","0","1","2","3",
     "4","5","6","7","8","9",":",";","<","=",
     ">","?","@","A","B","C","D","E","F","G",
@@ -41,35 +49,254 @@ const char *ascci_ch[128] = {
 };
 
 int main(void) {
-    printf("Bienvenidx al encriptador XOR, ingrese la opción que desea realizar\n" );
-    printf("1. Encriptar\n2. Desencriptar\n" );
-    int option;
-    scanf("%d",&option);
-    switch(option) {
-        case 1:
-            encrypt();
-            break;
+    while (1) {
+        printf("Bienvenidx al encriptador XOR, ingrese la opción que desea realizar\n");
+        printf("1. Encriptar\n2. Desencriptar\n3. Salir\n");
+        int option;
+        scanf("%d", &option);
+        switch (option) {
+            case 1:
+                encrypt();
+                break;
+            case 2:
+                decrypt();
+                break;
+            case 3:
+                return 0;
+            default:
+                printf("Entrada no válida\n");
+        }
+        printf("\n");
     }
-    return 0;
 }
 
 void encrypt(void) {
-    printf("Ingrese el texto que desea encriptar (máximo 30 caracteres)\n" );
-    char input[30];
-    scanf("%29s", input);
+    printf("Ingrese el texto que desea encriptar (máximo 100 caracteres)\n" );
+    char input[101];
+    scanf(" %100[^\n]", input);
+    if (str_length(input) > 100) {
+        printf("El mensaje no puede tener más de 100 caracteres\n");
+        return;
+    }
 
-    printf("Ingrese la llave (máximo 30 caracteres)\n" );
-    char key[20];
-    scanf("%19s", key);
+    printf("Ingrese la llave (máximo 99 caracteres)\n" );
+    char key[100];
+    scanf(" %99[^\n]", key);
+    if (str_length(key) >= str_length(input)) {
+        printf("La llave no puede ser más ni igual de larga que el mensaje\n");
+        return;
+    }
+    printf("------------------------------------------------------------------------------------------\n" );
+    if (str_length(key) == 0&&key[0]=='\0') {
+        printf("La llave no puede estar vacía.\n");
+        return;
+    }
 
-    for (int i = 0; i < (int)strlen(input); i++) {
+    char c[str_length(input)*8 + 1];
+    int cIndex = 0;
+    for (int i = 0; i < str_length(input); i++) {
         unsigned char bin = (unsigned char)input[i];
+        const char *bits = ascii[bin];
+        for (int j = 0; bits[j] != '\0'; j++) {
+            c[cIndex] = bits[j];
+            cIndex++;
+        }
+        printf("%s ", ascii[bin]);
+    }
+    c[cIndex] = '\0';
+    printf("\n");
 
-            printf("%s ", ascii[bin]);
+    int keyLen = (int)str_length(key);
+
+    char k[str_length(input)*8 + 1];
+    int kIn = 0;
+    for (int i = 0; i < str_length(input); i++) {
+        unsigned char binK = (unsigned char)key[i % keyLen];
+        const char *bitsK = ascii[binK];
+        for (int j = 0; bitsK[j] != '\0'; j++) {
+            k[kIn++] = bitsK[j];
+        }
+        printf("%s ", bitsK);
+    }
+    k[kIn] = '\0';
+
+    printf("\n");
+    printf("------------------------------------------------------------------------------------------\n" );
+
+    char res[ str_length(input)*8 + 1];
+    for (int i = 0; i < str_length(input)*8 + 1; i++) {
+        if (c[i] == k[i]) {
+            res[i] = '0';
+        }else {
+            res[i] = '1';
+        }
+    }
+
+    int tBits = (int)str_length(c);
+    int tBytse = tBits / 8;
+    char resInd[tBytse][9];
+
+    int byteIdx = 0;
+    int bitIdx = 0;
+    for (int i = 0; i < tBits; i++) {
+        resInd[byteIdx][bitIdx++] = res[i];
+        if (bitIdx == 8) {
+            resInd[byteIdx][8] = '\0';
+            byteIdx++;
+            bitIdx = 0;
+        }
+    }
+
+    for (int b = 0; b < tBytse; b++) {
+        printf("%s", resInd[b]);
+        if (b + 1 < tBytse) printf(" ");
     }
     printf("\n");
+    printf("------------------------------------------------------------------------------------------\n" );
+
+    char final[tBytse + 1];
+    for (int b = 0; b < tBytse; b++) {
+        int val = 0;
+        for (int j = 0; j < 8; j++) {
+            val = (val << 1) | (resInd[b][j] == '1');
+        }
+        final[b] = (char)val;
+    }
+    final[tBytse] = '\0';
+
+    printf("\n");
+    printf("Resultado:\n");
+    for (int i = 0; i < tBytse; i++) {
+        unsigned char ch = (unsigned char)final[i];
+        if (ch >= 32 && ch <= 126) {
+            putchar(ch);
+        } else {
+            putchar('.');
+        }
+    }
+    printf("\n");
+    printf("Resultado en hexadecimal:\n");
+    for (int i = 0; i < tBytse; i++) {
+        printf("%02X", (unsigned char)final[i]);
+        if (i + 1 < tBytse) printf(" ");
+    }
+
 }
 
-void decrypt() {}
+void print(char txt) {
+    printf("%s ", ascii[txt]);
+}
+void decrypt() {
+        printf("Ingrese el texto que desea desencriptar (máximo 100 caracteres)\n" );
+    char input[101];
+    scanf(" %100[^\n]", input);
+    if (str_length(input) > 100) {
+        printf("El mensaje no puede tener más de 100 caracteres\n");
+        return;
+    }
 
-void binaryChar(char c) {}
+    printf("Ingrese la llave (máximo 99 caracteres)\n" );
+    char key[99];
+    scanf(" %99[^\n]", key);
+    if (str_length(key) >= str_length(input)) {
+        printf("La llave no puede ser más ni igual de larga que el mensaje\n");
+        return;
+    }
+    printf("------------------------------------------------------------------------------------------\n" );
+    if (str_length(key) == 0&&key[0]=='\0') {
+        printf("La llave no puede estar vacía\n");
+        return;
+    }
+
+
+
+    char c[str_length(input)*8 + 1];
+    int cIndex = 0;
+    for (int i = 0; i < str_length(input); i++) {
+        unsigned char bin = (unsigned char)input[i];
+        const char *bits = ascii[bin];
+        for (int j = 0; bits[j] != '\0'; j++) {
+            c[cIndex] = bits[j];
+            cIndex++;
+        }
+        printf("%s ", ascii[bin]);
+    }
+    c[cIndex] = '\0';
+    printf("\n");
+
+    int keyLen = (int)str_length(key);
+
+    char k[str_length(input)*8 + 1];
+    int kIn = 0;
+    for (int i = 0; i < str_length(input); i++) {
+        unsigned char binK = (unsigned char)key[i % keyLen];
+        const char *bitsK = ascii[binK];
+        for (int j = 0; bitsK[j] != '\0'; j++) {
+            k[kIn++] = bitsK[j];
+        }
+        printf("%s ", bitsK);
+    }
+    k[kIn] = '\0';
+
+    printf("\n");
+    printf("------------------------------------------------------------------------------------------\n" );
+
+    char res[ str_length(input)*8 + 1];
+    for (int i = 0; i < str_length(input)*8 + 1; i++) {
+        if (c[i] == k[i]) {
+            res[i] = '0';
+        }else {
+            res[i] = '1';
+        }
+    }
+
+    int tBits = (int)str_length(c);
+    int tBytse = tBits / 8;
+    char resInd[tBytse][9];
+
+    int byteIdx = 0;
+    int bitIdx = 0;
+    for (int i = 0; i < tBits; i++) {
+        resInd[byteIdx][bitIdx++] = res[i];
+        if (bitIdx == 8) {
+            resInd[byteIdx][8] = '\0';
+            byteIdx++;
+            bitIdx = 0;
+        }
+    }
+
+    for (int b = 0; b < tBytse; b++) {
+        printf("%s", resInd[b]);
+        if (b + 1 < tBytse) printf(" ");
+    }
+    printf("\n");
+    printf("------------------------------------------------------------------------------------------\n" );
+
+    char final[tBytse + 1];
+    for (int b = 0; b < tBytse; b++) {
+        int val = 0;
+        for (int j = 0; j < 8; j++) {
+            val = (val << 1) | (resInd[b][j] == '1');
+        }
+        final[b] = (char)val;
+    }
+    final[tBytse] = '\0';
+
+    printf("\n");
+    printf("Resultado:\n");
+    for (int i = 0; i < tBytse; i++) {
+        unsigned char ch = (unsigned char)final[i];
+        if (ch >= 32 && ch <= 126) {
+            putchar(ch);
+        } else {
+            putchar('.');
+        }
+    }
+    printf("\n");
+
+    printf("Resultado en hexadecimal:\n");
+    for (int i = 0; i < tBytse; i++) {
+        printf("%02X", (unsigned char)final[i]);
+        if (i + 1 < tBytse) printf(" ");
+    }
+}
